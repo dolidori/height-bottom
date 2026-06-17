@@ -809,19 +809,28 @@ function judgeHeight(){
   const p0={x:gx(pickedPts[0].c),y:gy(pickedPts[0].r)};
   const p1={x:gx(pickedPts[1].c),y:gy(pickedPts[1].r)};
 
-  // 1) 선분이 밑변에 수직인가
+  // 선분이 밑변에 수직인가
   const perpOK = isPerpToBase(p0,p1,B,C);
-  // 2) 한 끝은 밑변 직선 위, 다른 끝은 꼭짓점을 지나는 평행선 위 (순서 무관)
-  const onBase0 = pointOnLine(p0,B,C);
-  const onBase1 = pointOnLine(p1,B,C);
-  const onApex0 = pointOnParallelThroughApex(p0,B,C,apex);
-  const onApex1 = pointOnParallelThroughApex(p1,B,C,apex);
-  const endsOK = (onBase0 && onApex1) || (onBase1 && onApex0);
+
+  let endsOK, isTri = (s.type==='삼각형');
+  if(isTri){
+    // 삼각형: 한 점은 반드시 밑변 반대편 꼭짓점(apex)과 일치, 다른 점은 밑변(연장선) 직선 위
+    endsOK = (near(p0,apex) && pointOnLine(p1,B,C)) ||
+             (near(p1,apex) && pointOnLine(p0,B,C));
+  }else{
+    // 평행사변형·사다리꼴: 평행이동 허용
+    // 한 끝은 밑변 직선 위, 다른 끝은 꼭짓점을 지나는 평행선 위
+    const onBase0=pointOnLine(p0,B,C), onBase1=pointOnLine(p1,B,C);
+    const onApex0=pointOnParallelThroughApex(p0,B,C,apex), onApex1=pointOnParallelThroughApex(p1,B,C,apex);
+    endsOK = (onBase0 && onApex1) || (onBase1 && onApex0);
+  }
 
   if(perpOK && endsOK){
     correct++; lastWasCorrect=true; answered=true;
     render();
-    setFeedback('정답입니다! 밑변과 꼭짓점 사이를 수직으로 이은 높이입니다.','good');
+    setFeedback(isTri
+      ? '정답입니다! 밑변과 마주 보는 꼭짓점에서 수직으로 내린 높이입니다.'
+      : '정답입니다! 밑변과 꼭짓점 사이를 수직으로 이은 높이입니다.','good');
   }else{
     lastWasCorrect=false; answered=true;
     render();
@@ -829,6 +838,8 @@ function judgeHeight(){
     markFoot(foot);
     if(!perpOK){
       setFeedback('아쉽습니다. 두 점을 이은 선이 밑변과 직각(수직)이 되어야 합니다.','bad');
+    }else if(isTri){
+      setFeedback('아쉽습니다. 삼각형의 높이는 밑변과 마주 보는 꼭짓점에 닿아야 합니다.','bad');
     }else{
       setFeedback('아쉽습니다. 한 끝은 밑변(연장선) 위, 다른 끝은 꼭짓점을 지나는 높이만큼 떨어진 위치여야 합니다.','bad');
     }
