@@ -113,6 +113,61 @@
     .group{padding:2px 3px;}
     button{padding:6px 9px;font-size:12px;}
   }
+
+  /* ---- 출력 모달 ---- */
+  .modal-backdrop{
+    position:fixed;inset:0;background:rgba(15,23,42,.45);
+    display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;
+  }
+  .modal{
+    background:#fff;border-radius:16px;padding:22px 22px 18px;max-width:440px;width:100%;
+    box-shadow:0 20px 50px rgba(0,0,0,.25);
+  }
+  .modal h2{margin:0 0 2px;font-size:18px;}
+  .modal-sub{margin:0 0 16px;color:var(--muted);font-size:13px;}
+  .modal-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
+  .modal-label{width:72px;font-size:13px;font-weight:600;color:#374151;flex-shrink:0;}
+  .seg{display:flex;gap:6px;flex-wrap:wrap;}
+  .seg button{font-size:13px;padding:7px 12px;border:1px solid #d1d5db;background:#fff;border-radius:9px;cursor:pointer;}
+  .seg button.on{background:var(--btn);color:#fff;border-color:var(--btn);}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+  .btn-ghost{padding:9px 16px;border:1px solid #d1d5db;background:#fff;border-radius:9px;cursor:pointer;font-size:14px;}
+  .btn-primary{padding:9px 18px;border:none;background:var(--accent);color:#fff;border-radius:9px;cursor:pointer;font-size:14px;font-weight:600;}
+  .btn-primary:hover{background:#1d4ed8;}
+
+  /* ---- 인쇄 시트 ---- */
+  #printSheet{display:none;}
+  @media print{
+    body *{visibility:hidden;}
+    #printSheet, #printSheet *{visibility:visible;}
+    #printSheet{display:block;position:absolute;left:0;top:0;width:100%;}
+    @page{size:A4 portrait;margin:8mm;}
+    .ps-title{
+      text-align:center;font-size:20pt;font-weight:800;color:#0f172a;
+      margin:0 0 3mm;letter-spacing:-.01em;
+    }
+    .ps-meta{
+      display:flex;gap:6mm;justify-content:flex-end;align-items:flex-end;
+      font-size:10pt;color:#1f2937;margin:0 0 4mm;padding-bottom:2mm;
+      border-bottom:1.5px solid #334155;
+    }
+    .ps-meta .field{display:flex;align-items:flex-end;gap:1.5mm;}
+    .ps-meta .field b{font-weight:700;}
+    .ps-meta .blank{display:inline-block;border-bottom:1px solid #94a3b8;min-width:14mm;height:5mm;}
+    .ps-meta .blank.name{min-width:26mm;}
+    .ps-page{
+      display:grid;grid-template-columns:repeat(3,1fr);
+      grid-template-rows:repeat(4, 60mm);
+      gap:5mm;width:194mm;
+    }
+    .ps-cell{
+      border:1px solid #cbd5e1;border-radius:6px;padding:2.5mm 2mm 2mm;
+      display:flex;flex-direction:column;break-inside:avoid;overflow:hidden;
+    }
+    .ps-head{font-size:11pt;font-weight:700;color:#0f172a;margin-bottom:1.5mm;}
+    .ps-head .q{color:#2563eb;}
+    .ps-cell svg{width:100%;height:auto;max-height:48mm;margin:auto;display:block;object-fit:contain;}
+  }
 </style>
 </head>
 <body>
@@ -141,6 +196,9 @@
     <div class="group">
       <button onclick="nextShape()">다음 도형 ▸</button>
     </div>
+    <div class="group">
+      <button id="printBtn" onclick="openPrintModal()">🖨 학습지 출력</button>
+    </div>
   </div>
 
   <div id="pickPanel" class="toolbar" style="display:none;">
@@ -167,6 +225,49 @@
     <b>높이 찾기</b>: <span class="pill base">밑변</span>이 청록색으로 지정되어 있습니다. <b>밑변(또는 연장선) 위의 격자점</b>과 그 위 <b>꼭짓점 격자점</b>, 두 점을 차례로 클릭해 높이를 그으세요. 두 점을 이은 선이 밑변과 수직이고 꼭짓점을 지나면 정답입니다. 높이의 발이 밑변 밖이면 <b>연장선 긋기</b>를 먼저 사용하세요.
   </div>
 </div>
+
+<!-- 학습지 출력 모달 -->
+<div id="printModal" class="modal-backdrop" style="display:none;">
+  <div class="modal">
+    <h2>학습지 출력</h2>
+    <p class="modal-sub">A4 한 페이지에 12개 문제가 출력됩니다.</p>
+
+    <div class="modal-row">
+      <span class="modal-label">도형 종류</span>
+      <div class="seg" id="psKind">
+        <button data-v="삼각형">삼각형</button>
+        <button data-v="평행사변형">평행사변형</button>
+        <button data-v="사다리꼴">사다리꼴</button>
+        <button data-v="섞기" class="on">섞기</button>
+      </div>
+    </div>
+
+    <div class="modal-row">
+      <span class="modal-label">문제 유형</span>
+      <div class="seg" id="psType">
+        <button data-v="base">밑변 찾기</button>
+        <button data-v="height">높이 찾기</button>
+        <button data-v="섞기" class="on">섞기</button>
+      </div>
+    </div>
+
+    <div class="modal-row">
+      <span class="modal-label">모눈종이</span>
+      <div class="seg" id="psGrid">
+        <button data-v="on" class="on">켜기</button>
+        <button data-v="off">끄기</button>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closePrintModal()">취소</button>
+      <button class="btn-primary" onclick="doPrint()">🖨 출력 / PDF 저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 인쇄 전용 시트(평소 숨김) -->
+<div id="printSheet"></div>
 
 <script>
 /* ---------- 격자 설정 ---------- */
@@ -890,10 +991,154 @@ function highlightCorrectEdge(target){
 }
 
 function autoAdvance(){
-  // 정답·오답 후 1.4초 뒤 다음 도형 (무작위 모드일 때만 자동)
-  if(source==='random'){
-    setTimeout(()=>{ if(answered) nextShape(); }, 1500);
+  // 정답·오답 후 다음 도형으로 자동 진행 (무작위·직접 선택 모두)
+  setTimeout(()=>{ if(answered) nextShape(); }, 1500);
+}
+
+/* ====================== 학습지 출력 ====================== */
+const printState = { kind:'섞기', type:'섞기', grid:'on' };
+
+function openPrintModal(){
+  document.getElementById('printModal').style.display='flex';
+}
+function closePrintModal(){
+  document.getElementById('printModal').style.display='none';
+}
+// 모달 세그먼트 버튼 토글
+function wireSeg(id, key){
+  const box=document.getElementById(id);
+  box.querySelectorAll('button').forEach(b=>{
+    b.onclick=()=>{
+      box.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      printState[key]=b.dataset.v;
+    };
+  });
+}
+wireSeg('psKind','kind');
+wireSeg('psType','type');
+wireSeg('psGrid','grid');
+
+// 인쇄용 정적 SVG 문자열 생성 (한 문제)
+// 인쇄는 화면(16x9)과 달리 칸을 꽉 채우도록 더 큰 모눈/도형으로 그린다.
+const P_STEP=64, P_OX=24, P_OY=24;          // 인쇄용 큰 칸
+function pgx(c){ return P_OX + c*P_STEP; }
+function pgy(r){ return P_OY + r*P_STEP; }
+
+function buildShapeSVG(s, qmode, showGrid){
+  // 도형을 인쇄 격자에 맞게 재중심: 도형 범위를 구해 여백 최소화
+  const xs=s.pts.map(p=>p[0]), ys=s.pts.map(p=>p[1]);
+  const minx=Math.min(...xs), maxx=Math.max(...xs);
+  const miny=Math.min(...ys), maxy=Math.max(...ys);
+  const wCells=maxx-minx, hCells=maxy-miny;
+  // 칸 수: 도형 + 좌우상하 여백 1칸씩
+  const PCOLS=wCells+2, PROWS=hCells+2;
+  // 도형 좌표를 (1,1) 기준으로 평행이동
+  const tx=1-minx, ty=1-miny;
+  const sp = s.pts.map(p=>[p[0]+tx, p[1]+ty]);
+  const ss = Object.assign({}, s, {pts:sp});
+
+  const VW=P_OX*2+PCOLS*P_STEP, VH=P_OY*2+PROWS*P_STEP;
+  const parts=[];
+  parts.push(`<svg viewBox="0 0 ${VW} ${VH}" xmlns="http://www.w3.org/2000/svg">`);
+  if(showGrid){
+    for(let c=0;c<=PCOLS;c++) parts.push(`<line x1="${pgx(c)}" y1="${pgy(0)}" x2="${pgx(c)}" y2="${pgy(PROWS)}" stroke="#d3deea" stroke-width="1"/>`);
+    for(let r=0;r<=PROWS;r++) parts.push(`<line x1="${pgx(0)}" y1="${pgy(r)}" x2="${pgx(PCOLS)}" y2="${pgy(r)}" stroke="#d3deea" stroke-width="1"/>`);
   }
+  const Pp=(i)=>({x:pgx(ss.pts[i][0]), y:pgy(ss.pts[i][1])});
+
+  const poly=ss.pts.map(p=>pgx(p[0])+','+pgy(p[1])).join(' ');
+  parts.push(`<polygon points="${poly}" fill="rgba(37,99,235,.04)" stroke="none"/>`);
+
+  const t=ss.bases[Math.floor(Math.random()*ss.bases.length)];
+
+  if(qmode==='base'){
+    parts.push(heightSVGp(ss,t,Pp));
+  }else{
+    const B=Pp(t.base[0]), C=Pp(t.base[1]);
+    parts.push(`<line x1="${B.x}" y1="${B.y}" x2="${C.x}" y2="${C.y}" stroke="#0f766e" stroke-width="5"/>`);
+    const mx=(B.x+C.x)/2,my=(B.y+C.y)/2;
+    parts.push(`<text x="${mx}" y="${my-11}" font-size="20" font-weight="700" fill="#0f766e" text-anchor="middle">밑변</text>`);
+  }
+
+  for(let i=0;i<ss.pts.length;i++){
+    const j=(i+1)%ss.pts.length;
+    const A=Pp(i), Bx=Pp(j);
+    parts.push(`<line x1="${A.x}" y1="${A.y}" x2="${Bx.x}" y2="${Bx.y}" stroke="#2b2b2b" stroke-width="3"/>`);
+  }
+  for(let i=0;i<ss.pts.length;i++){
+    const A=Pp(i);
+    parts.push(`<circle cx="${A.x}" cy="${A.y}" r="5.5" fill="#fff" stroke="#2b2b2b" stroke-width="2.4"/>`);
+  }
+  parts.push(`</svg>`);
+  return parts.join('');
+}
+
+// 인쇄용 높이선 (좌표 변환 Pp 사용)
+function heightSVGp(s,t,Pp){
+  const out=[];
+  let A=Pp(t.apex), B=Pp(t.base[0]), C=Pp(t.base[1]);
+  if(s.type==='평행사변형' && t.opp){
+    const O1=Pp(t.opp[0]), O2=Pp(t.opp[1]);
+    const inner=innerTopPoint(O1,O2,B,C);
+    if(inner) A=inner;
+  }
+  const F=footOfPerp(A,B,C);
+  const outside=(F.t<-1e-9||F.t>1+1e-9);
+  out.push(`<line x1="${A.x}" y1="${A.y}" x2="${F.x}" y2="${F.y}" stroke="#db2777" stroke-width="3"/>`);
+  if(outside){
+    const near=(F.t<0)?B:C;
+    out.push(`<line x1="${near.x}" y1="${near.y}" x2="${F.x}" y2="${F.y}" stroke="#9ca3af" stroke-width="2" stroke-dasharray="3 5"/>`);
+  }
+  const bx=C.x-B.x, by=C.y-B.y, bl=Math.hypot(bx,by)||1;
+  const ubx=bx/bl, uby=by/bl;
+  const mid={x:(A.x+F.x)/2,y:(A.y+F.y)/2};
+  let cx=0,cy=0; s.pts.forEach((p,i)=>{const q=Pp(i);cx+=q.x;cy+=q.y;}); cx/=s.pts.length; cy/=s.pts.length;
+  const test={x:mid.x+ubx*12,y:mid.y+uby*12};
+  const away=(Math.hypot(test.x-cx,test.y-cy)>=Math.hypot(mid.x-cx,mid.y-cy))?1:-1;
+  const bulge=20;
+  const ctrl={x:mid.x+ubx*bulge*away,y:mid.y+uby*bulge*away};
+  out.push(`<path d="M ${A.x} ${A.y} Q ${ctrl.x} ${ctrl.y} ${F.x} ${F.y}" fill="none" stroke="#db2777" stroke-width="2" stroke-dasharray="4 4" opacity="0.85"/>`);
+  const mlx=(A.x+F.x)/2, mly=(A.y+F.y)/2;
+  out.push(`<text x="${mlx+11}" y="${mly}" font-size="20" font-weight="700" fill="#db2777">높이</text>`);
+  return out.join('');
+}
+
+function doPrint(){
+  const KINDS3=['삼각형','평행사변형','사다리꼴'];
+  const sheet=document.getElementById('printSheet');
+  const showGrid = (printState.grid==='on');
+
+  // 제목 결정
+  let title;
+  if(printState.type==='base') title='다각형의 밑변 찾기';
+  else if(printState.type==='height') title='다각형의 높이 찾기';
+  else title='다각형의 밑변과 높이 찾기';
+
+  let cells='';
+  for(let i=0;i<12;i++){
+    const kind = (printState.kind==='섞기')? KINDS3[Math.floor(Math.random()*3)] : printState.kind;
+    let qmode;
+    if(printState.type==='섞기') qmode = Math.random()<0.5?'base':'height';
+    else qmode = printState.type;
+    const s = generateShape(kind, {});
+    const label = (qmode==='base')? '밑변을 찾으세요.' : '높이를 찾으세요.';
+    const svg = buildShapeSVG(s, qmode, showGrid);
+    cells += `<div class="ps-cell"><div class="ps-head"><span class="q">${i+1}.</span> ${label}</div>${svg}</div>`;
+  }
+
+  const header =
+    `<div class="ps-title">${title}</div>`+
+    `<div class="ps-meta">`+
+      `<span class="field"><b>학년</b><span class="blank"></span></span>`+
+      `<span class="field"><b>반</b><span class="blank"></span></span>`+
+      `<span class="field"><b>번호</b><span class="blank"></span></span>`+
+      `<span class="field"><b>이름</b><span class="blank name"></span></span>`+
+    `</div>`;
+
+  sheet.innerHTML = header + `<div class="ps-page">${cells}</div>`;
+  closePrintModal();
+  setTimeout(()=>{ window.print(); }, 100);
 }
 
 /* ---------- 초기화 ---------- */
