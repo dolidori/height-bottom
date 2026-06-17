@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>밑변과 높이 찾기 연습</title>
+<style>
+  :root{
+    --bg:#fbfaf7;
+    --ink:#2b2b2b;
+    --line:#3a3a3a;
+    --grid:#d9e2ec;
+    --grid-strong:#bcccdc;
+    --accent:#2563eb;     /* 선택/강조 파랑 */
+    --base:#0f766e;       /* 밑변 청록 */
+    --height:#db2777;     /* 높이 분홍 */
+    --good:#16a34a;
+    --bad:#dc2626;
+    --panel:#ffffff;
+    --muted:#6b7280;
+    --btn:#1f2937;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:980px;margin:0 auto;padding:18px 16px 40px;}
+  h1{font-size:20px;margin:6px 0 2px;letter-spacing:-.01em;}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 16px;}
+
+  .toolbar{
+    display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+    background:var(--panel);border:1px solid #e5e7eb;border-radius:14px;
+    padding:10px;margin-bottom:14px;
+  }
+  .group{display:flex;gap:6px;align-items:center;padding:2px 6px;}
+  .group + .group{border-left:1px solid #eee;}
+  .glabel{font-size:11px;color:var(--muted);margin-right:2px;}
+
+  button{
+    font:inherit;font-size:13px;cursor:pointer;
+    border:1px solid #d1d5db;background:#fff;color:var(--ink);
+    padding:7px 12px;border-radius:9px;transition:.12s;
+  }
+  button:hover{border-color:#9ca3af;}
+  button.on{background:var(--btn);color:#fff;border-color:var(--btn);}
+  button.warn.on{background:var(--accent);border-color:var(--accent);}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+
+  .stage{
+    position:relative;background:var(--panel);
+    border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;
+  }
+  svg{display:block;width:100%;height:auto;touch-action:manipulation;}
+
+  .statusbar{
+    display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;
+    margin:0 0 10px;
+  }
+  .prompt{
+    font-size:15px;font-weight:600;
+    background:#eef2ff;border:1px solid #e0e7ff;color:#1e3a8a;
+    padding:10px 14px;border-radius:11px;flex:1 1 320px;
+  }
+  .prompt b{color:var(--base);}
+  .prompt.height-mode b{color:var(--height);}
+  .feedback{font-weight:700;font-size:15px;min-height:22px;margin:0 0 10px;}
+  .feedback.good{color:var(--good);}
+  .feedback.bad{color:var(--bad);}
+
+  .scores{display:flex;gap:18px;font-size:14px;}
+  .scores .num{font-weight:700;font-size:17px;}
+  .scores .acc{color:var(--muted);}
+
+  .hint{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.6;}
+  .pill{display:inline-block;padding:1px 7px;border-radius:6px;font-size:11px;font-weight:600;}
+  .pill.base{background:#ccfbf1;color:#0f766e;}
+  .pill.height{background:#fce7f3;color:#9d174d;}
+
+  /* SVG element styles */
+  .edge{stroke:var(--line);stroke-width:2.5;fill:none;cursor:pointer;}
+  .edge.hover{stroke:var(--accent);stroke-width:4;}
+  .edge.base-target{stroke:var(--base);stroke-width:4;}
+  .edge.picked{stroke:var(--accent);stroke-width:4.5;}
+  .edge.correct{stroke:var(--good);stroke-width:4.5;}
+  .edge.wrong{stroke:var(--bad);stroke-width:4.5;}
+  .ext{stroke:var(--muted);stroke-width:1.6;stroke-dasharray:5 5;fill:none;}
+  .heightline{stroke:var(--height);stroke-width:2.6;fill:none;}
+  .heightline.dash{stroke-dasharray:2 4;stroke-width:1.6;stroke:var(--muted);}
+  .rightangle{stroke:var(--height);stroke-width:1.6;fill:none;}
+  .heightarch{stroke:var(--height);stroke-width:1.6;fill:none;stroke-dasharray:3 3;stroke-linecap:round;opacity:.85;}
+  .vertex{fill:#fff;stroke:var(--line);stroke-width:2;cursor:pointer;}
+  .vertex.hover{stroke:var(--accent);fill:#dbeafe;r:7;}
+  .vertex.correct{fill:var(--good);stroke:var(--good);}
+  .vertex.wrong{fill:var(--bad);stroke:var(--bad);}
+  .gridhit{fill:transparent;cursor:pointer;}
+  .griddot{fill:var(--grid-strong);pointer-events:none;}
+  .gridhit:hover + .griddot,.gridhit.hovered + .griddot{fill:var(--accent);}
+  .picktick{fill:var(--accent);stroke:#fff;stroke-width:1.5;pointer-events:none;}
+  .picktick.correct{fill:var(--good);}
+  .picktick.wrong{fill:var(--bad);}
+  .userheight{stroke:var(--height);stroke-width:2.8;fill:none;pointer-events:none;}
+  .userheight.wrong{stroke:var(--bad);stroke-dasharray:6 5;}
+  .snaphint{fill:none;stroke:var(--height);stroke-width:2;pointer-events:none;opacity:.9;}
+  .snaphint-dot{fill:var(--height);pointer-events:none;}
+  .label{font-size:13px;font-weight:700;fill:#374151;pointer-events:none;}
+  .shapefill{fill:rgba(37,99,235,.05);stroke:none;}
+
+  @media (max-width:560px){
+    .toolbar{gap:6px;}
+    .group{padding:2px 3px;}
+    button{padding:6px 9px;font-size:12px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>밑변과 높이 찾기 연습</h1>
+  <p class="sub">삼각형 · 평행사변형 · 사다리꼴에서 밑변과 높이를 찾아봅니다.</p>
+
+  <div class="toolbar">
+    <div class="group">
+      <span class="glabel">모드</span>
+      <button id="modeBase" class="on" onclick="setMode('base')">밑변 찾기</button>
+      <button id="modeHeight" onclick="setMode('height')">높이 찾기</button>
+      <button id="modeRandom" onclick="setMode('random')">무작위</button>
+    </div>
+    <div class="group">
+      <span class="glabel">출제</span>
+      <button id="srcRandom" class="on" onclick="setSource('random')">무작위</button>
+      <button id="srcPick" onclick="setSource('pick')">직접 선택</button>
+    </div>
+    <div class="group">
+      <button id="extBtn" class="warn" onclick="toggleExtend()">연장선 긋기</button>
+    </div>
+    <div class="group">
+      <button id="gridBtn" class="on" onclick="toggleGrid()">모눈 켜짐</button>
+    </div>
+    <div class="group">
+      <button onclick="nextShape()">다음 도형 ▸</button>
+    </div>
+  </div>
+
+  <div id="pickPanel" class="toolbar" style="display:none;">
+    <span class="glabel">도형 선택</span>
+    <span id="pickButtons" style="display:flex;flex-wrap:wrap;gap:6px;"></span>
+  </div>
+
+  <div class="statusbar">
+    <div id="prompt" class="prompt"></div>
+    <div class="scores">
+      <div>시도 <span id="tries" class="num">0</span></div>
+      <div>정답 <span id="correct" class="num">0</span></div>
+      <div class="acc">정답률 <span id="acc">0</span>%</div>
+    </div>
+  </div>
+  <div id="feedback" class="feedback"></div>
+
+  <div class="stage">
+    <svg id="svg" viewBox="0 0 720 460" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+
+  <div class="hint">
+    <b>밑변 찾기</b>: <span class="pill height">높이</span>가 분홍색으로 그려져 있습니다. 그 높이에 알맞은 <b>밑변(변)</b>을 클릭하세요.<br>
+    <b>높이 찾기</b>: <span class="pill base">밑변</span>이 청록색으로 지정되어 있습니다. <b>밑변(또는 연장선) 위의 격자점</b>과 그 위 <b>꼭짓점 격자점</b>, 두 점을 차례로 클릭해 높이를 그으세요. 두 점을 이은 선이 밑변과 수직이고 꼭짓점을 지나면 정답입니다. 높이의 발이 밑변 밖이면 <b>연장선 긋기</b>를 먼저 사용하세요.
+  </div>
+</div>
+
+<script>
+/* ---------- 격자 설정 ---------- */
+const STEP = 40;              // 모눈 한 칸 픽셀
+const OX = 40, OY = 40;       // 원점 오프셋
+const W = 720, H = 460;
+const COLS = Math.floor((W-2*OX)/STEP);
+const ROWS = Math.floor((H-2*OY)/STEP);
+function gx(c){ return OX + c*STEP; }
+function gy(r){ return OY + r*STEP; }
+
+/* ---------- 도형 무작위 생성기 ----------
+   조건: 모든 꼭짓점·수선의 발이 격자점, 넓이가 정수.
+   비결: 밑변 방향을 정수 벡터(축정렬 또는 3-4-5계)로 두면 수직 방향도 정수 →
+         수선의 발이 격자점에 떨어지고, 넓이도 깔끔하게 정수가 됨.
+------------------------------------------------ */
+const AXIS=[[1,0],[0,1]];
+const TILT=[[4,3],[3,4],[4,-3],[3,-4],[-4,3],[-3,4]];
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const pickOne=a=>a[Math.floor(Math.random()*a.length)];
+function vperp(v){ return [-v[1],v[0]]; }
+function vadd(p,v,k){ k=(k===undefined?1:k); return [p[0]+v[0]*k, p[1]+v[1]*k]; }
+function inGrid(p){ return p[0]>=0&&p[0]<=COLS&&p[1]>=0&&p[1]<=ROWS; }
+function polyArea(pts){
+  let s=0,n=pts.length;
+  for(let i=0;i<n;i++){const j=(i+1)%n; s+=pts[i][0]*pts[j][1]-pts[j][0]*pts[i][1];}
+  return Math.abs(s)/2;
+}
+
+function genTriangle(tiltBias){
+  const d = (Math.random()<(tiltBias??0.6))? pickOne(TILT):pickOne(AXIS);
+  const pd=vperp(d);
+  let blen=rnd(2,4), h=rnd(2,4);
+  if((blen*h)%2!==0){ if(h<4) h++; else h--; }   // 넓이 정수화(밑변×높이 짝수)
+  const shift=rnd(-blen,blen);
+  const B=[rnd(0,COLS),rnd(0,ROWS)];
+  const C=vadd(B,d,blen), apex=vadd(vadd(B,d,shift),pd,h);
+  const pts=[B,C,apex];
+  if(!pts.every(inGrid)||polyArea(pts)<4) return null;
+  return {type:'삼각형',pts,bases:[{base:[0,1],apex:2}],areaOK:true};
+}
+function genPara(tiltBias){
+  // 밑변은 축정렬(수평/수직) → 옆변의 수직성분이 곧 높이(정수) 보장.
+  // 옆변을 비스듬한 (slant, h)로 두어 '진짜' 평행사변형을 만든다(직사각형 방지).
+  // slant는 밑변 길이보다 작게 → 윗변이 밑변 위에 충분히 겹쳐 '내부 높이'가 항상 가능.
+  const horiz = Math.random()<0.5;
+  const blen=rnd(3,5);          // 밑변 길이(내부 높이 여유 위해 3 이상)
+  const h=rnd(2,4);             // 높이(밑변에 수직인 거리, 정수)
+  const maxSlant=blen-1;
+  let slant=rnd(-maxSlant,maxSlant);
+  if(slant===0) slant = (Math.random()<0.5?1:-1)*rnd(1,maxSlant); // 직사각형 제외
+  const B=[rnd(0,COLS),rnd(0,ROWS)];
+  const base = horiz? [blen,0] : [0,blen];
+  const side = horiz? [slant,h] : [h,slant];
+  const C=vadd(B,base,1), A=vadd(B,side,1), D=vadd(C,side,1);
+  const pts=[A,B,C,D];
+  if(!pts.every(inGrid)||polyArea(pts)<6) return null;
+  return {type:'평행사변형',pts,
+    bases:[{base:[1,2],apex:0,opp:[3,0]},{base:[0,3],apex:1,opp:[1,2]}],areaOK:true};
+}
+function genTrap(tiltBias){
+  const d = (Math.random()<(tiltBias??0.6))? pickOne(TILT):pickOne(AXIS);
+  const pd=vperp(d);
+  let bottom=rnd(3,6), top=rnd(1,bottom-1);
+  const h=rnd(2,3);
+  if(((top+bottom)*h)%2!==0){ top += (top+1<bottom)?1:-1; }  // 넓이 정수화
+  if(top<1||top>=bottom) return null;
+  const B=[rnd(0,COLS),rnd(0,ROWS)];
+  const C=vadd(B,d,bottom);
+  const off=rnd(0,bottom-top);
+  const A=vadd(vadd(B,pd,h),d,off), D=vadd(A,d,top);
+  const pts=[A,B,C,D];
+  if(!pts.every(inGrid)||polyArea(pts)<8) return null;
+  if(!Number.isInteger(polyArea(pts))) return null;
+  return {type:'사다리꼴',pts,bases:[{base:[1,2],apex:3,opp:[3,0]}],areaOK:true};
+}
+
+// 도형을 모눈 격자 중앙으로 평행이동(정수 칸 단위 → 격자 정렬 유지)
+function centerShape(s){
+  const xs=s.pts.map(p=>p[0]), ys=s.pts.map(p=>p[1]);
+  const minx=Math.min(...xs), maxx=Math.max(...xs);
+  const miny=Math.min(...ys), maxy=Math.max(...ys);
+  const dx=Math.round((COLS-(minx+maxx))/2);
+  const dy=Math.round((ROWS-(miny+maxy))/2);
+  s.pts=s.pts.map(p=>[p[0]+dx, p[1]+dy]);
+  return s;
+}
+
+// 종류를 받아(또는 무작위로) 유효한 도형 하나를 생성
+function generateShape(kind, opts){
+  opts=opts||{};
+  const makers={ '삼각형':genTriangle, '평행사변형':genPara, '사다리꼴':genTrap };
+  for(let attempt=0; attempt<400; attempt++){
+    const k = kind || pickOne(['삼각형','평행사변형','사다리꼴']);
+    const s = makers[k](opts.tiltBias);
+    if(!s) continue;
+    if(opts.areaOnly && !s.areaOK) continue;
+    return centerShape(s);
+  }
+  // 안전장치: 실패하면 기본 삼각형
+  return centerShape({type:'삼각형',pts:[[1,1],[1,5],[5,5]],bases:[{base:[0,1],apex:2}],areaOK:true});
+}
+
+/* ---------- 상태 ---------- */
+let modeSetting = 'base'; // 'base' | 'height' | 'random' (사용자 선택)
+let mode = 'base';        // 현재 도형에 실제 적용된 모드 'base' | 'height'
+let source = 'random';    // 'random' | 'pick'
+let curKind = null;       // 직접 선택 시 도형 종류('삼각형'…), null이면 모든 종류
+let gridOn = true;
+let extendArmed = false;  // 연장선 긋기 모드
+let cur = null;           // 현재 도형 객체
+let task = null;          // 현재 출제된 쌍 {base, apex}
+let extendedEdges = new Set(); // 연장된 변 키
+let answered = false;
+let tries = 0, correct = 0;
+let pickedPts = [];       // 높이 찾기에서 클릭한 격자점 [{c,r}, ...]
+let pickedBases = new Set(); // 밑변 찾기에서 클릭한 변 키(평행사변형 두 변 처리용)
+let lastWasCorrect = false;
+let areaSubmitted = false;   // 넓이 모드 제출 여부
+function syncAreaUI(){ /* 넓이 모드 UI 동기화 (아래에서 구현) */ }
+
+const svg = document.getElementById('svg');
+const NS = "http://www.w3.org/2000/svg";
+
+/* ---------- 도형 종류 선택 패널 ---------- */
+const KINDS=['삼각형','평행사변형','사다리꼴'];
+function buildPickButtons(){
+  const c = document.getElementById('pickButtons');
+  c.innerHTML='';
+  KINDS.forEach(k=>{
+    const b=document.createElement('button');
+    b.textContent=k;
+    b.onclick=()=>{ curKind=k; highlightKind(k); nextShape(); };
+    b.dataset.kind=k;
+    c.appendChild(b);
+  });
+}
+function highlightKind(k){
+  document.querySelectorAll('#pickButtons button').forEach(b=>{
+    b.classList.toggle('on', b.dataset.kind===k);
+  });
+}
+
+/* ---------- 컨트롤 핸들러 ---------- */
+function setMode(m){
+  modeSetting=m;
+  document.getElementById('modeBase').classList.toggle('on',m==='base');
+  document.getElementById('modeHeight').classList.toggle('on',m==='height');
+  document.getElementById('modeRandom').classList.toggle('on',m==='random');
+  nextShape();
+}
+function setSource(s){
+  source=s;
+  document.getElementById('srcRandom').classList.toggle('on',s==='random');
+  document.getElementById('srcPick').classList.toggle('on',s==='pick');
+  document.getElementById('pickPanel').style.display = (s==='pick')?'flex':'none';
+  if(s==='pick'){
+    if(!curKind){ curKind='삼각형'; highlightKind(curKind); }
+    nextShape();
+  }else{
+    nextShape();
+  }
+}
+function toggleGrid(){
+  gridOn=!gridOn;
+  document.getElementById('gridBtn').classList.toggle('on',gridOn);
+  document.getElementById('gridBtn').textContent = gridOn?'모눈 켜짐':'모눈 꺼짐';
+  render();
+}
+function toggleExtend(){
+  extendArmed=!extendArmed;
+  document.getElementById('extBtn').classList.toggle('on',extendArmed);
+  render();
+}
+
+/* ---------- 출제 ---------- */
+function nextShape(){
+  // 모드가 넓이면 areaOK 도형만, 직접 선택 모드면 그 종류만
+  const wantArea = (modeSetting==='area');
+  const kind = (source==='pick') ? curKind : null;
+  const s = generateShape(kind, {areaOnly:wantArea, tiltBias:0.6});
+  loadShape(s);
+}
+function loadShape(s){
+  cur=s;
+  // 모드 결정: 무작위면 밑변/높이 중 하나를 뽑음(넓이 모드는 그대로 넓이)
+  if(modeSetting==='random') mode = (Math.random()<0.5?'base':'height');
+  else mode = modeSetting;
+  task = s.bases[Math.floor(Math.random()*s.bases.length)];
+  extendedEdges.clear();
+  extendArmed=false;
+  pickedPts=[];
+  pickedBases.clear();
+  lastWasCorrect=false;
+  areaSubmitted=false;
+  document.getElementById('extBtn').classList.remove('on');
+  answered=false;
+  setFeedback('','');
+  updatePrompt();
+  render();
+  syncAreaUI();
+}
+
+function updatePrompt(){
+  const p=document.getElementById('prompt');
+  if(mode==='base'){
+    p.classList.remove('height-mode');
+    p.innerHTML='<b>밑변을 찾으세요.</b> 밑변이 되는 변을 클릭합니다.';
+  }else{
+    p.classList.add('height-mode');
+    p.innerHTML='<b>높이를 찾으세요.</b> 꼭짓점과 수선의 발, 두 격자점을 클릭해 높이를 긋습니다.';
+  }
+}
+function setFeedback(t,kind){
+  const f=document.getElementById('feedback');
+  f.textContent=t;
+  f.className='feedback'+(kind?(' '+kind):'');
+}
+function updateScores(){
+  document.getElementById('tries').textContent=tries;
+  document.getElementById('correct').textContent=correct;
+  document.getElementById('acc').textContent= tries? Math.round(correct/tries*100):0;
+}
+
+/* ---------- 기하 계산 ---------- */
+function P(s,idx){ return {x:gx(s.pts[idx][0]), y:gy(s.pts[idx][1])}; }
+function edgeKey(a,b){ return a<b? a+'-'+b : b+'-'+a; }
+
+// 점 A에서 직선 BC에 내린 수선의 발
+function footOfPerp(A,B,C){
+  const dx=C.x-B.x, dy=C.y-B.y;
+  const t=((A.x-B.x)*dx+(A.y-B.y)*dy)/(dx*dx+dy*dy);
+  return {x:B.x+t*dx, y:B.y+t*dy, t};
+}
+
+// 격자 단위 길이(칸 수)
+function gLen(s,i,j){
+  const a=s.pts[i], b=s.pts[j];
+  return Math.hypot(a[0]-b[0], a[1]-b[1]);
+}
+// 격자 단위 넓이(신발끈 공식)
+function gArea(s){
+  const p=s.pts; let sum=0;
+  for(let i=0;i<p.length;i++){
+    const j=(i+1)%p.length;
+    sum += p[i][0]*p[j][1] - p[j][0]*p[i][1];
+  }
+  return Math.abs(sum)/2;
+}
+// 넓이 문제용: 밑변·높이(정수)와 사다리꼴 윗변·아랫변
+function areaInfo(s){
+  const b=s.bases[0];
+  const B=s.pts[b.base[0]], C=s.pts[b.base[1]], A=s.pts[b.apex];
+  const base=Math.round(gLen(s,b.base[0],b.base[1]));
+  // 높이 = |cross|/|base|
+  const bx=C[0]-B[0], by=C[1]-B[1];
+  const h=Math.round(Math.abs((A[0]-B[0])*by-(A[1]-B[1])*bx)/Math.hypot(bx,by));
+  const area=Math.round(gArea(s));
+  const info={type:s.type, base, height:h, area};
+  if(s.type==='사다리꼴'){
+    info.top=Math.round(gLen(s,b.opp[0],b.opp[1]));
+    info.bottom=base;
+  }
+  return info;
+}
+
+/* ---------- 렌더링 ---------- */
+function render(){
+  svg.innerHTML='';
+  if(gridOn) drawGrid();
+  if(cur===null) return;
+  const s=cur;
+
+  // 도형 면 채우기
+  const poly=document.createElementNS(NS,'polygon');
+  poly.setAttribute('points', s.pts.map(p=>gx(p[0])+','+gy(p[1])).join(' '));
+  poly.setAttribute('class','shapefill');
+  svg.appendChild(poly);
+
+  // 연장선 (밑변의 양 끝을 늘임) - 연장된 변에 대해
+  s.pts.forEach((_,i)=>{
+    const j=(i+1)%s.pts.length;
+    const k=edgeKey(i,j);
+    if(extendedEdges.has(k)){
+      drawExtension(P(s,i),P(s,j));
+    }
+  });
+
+  // 높이 찾기 모드: 밑변(주어진 것)을 강조
+  // 밑변 찾기 모드: 높이를 처음부터 표시
+  if(mode==='height'){
+    drawBaseTarget(s, task.base);
+  }else{
+    drawHeight(s, task, true);
+  }
+
+  // 변(클릭 대상)
+  s.pts.forEach((_,i)=>{
+    const j=(i+1)%s.pts.length;
+    drawEdge(s,i,j);
+  });
+
+  // 높이 찾기 모드: 격자점 클릭 레이어 + 학생이 찍은 점/선
+  if(mode==='height'){
+    drawGridHits();
+    drawPickedHeight();
+  }
+
+  // 꼭짓점
+  s.pts.forEach((_,i)=> drawVertex(s,i));
+}
+
+// 격자점 표시 + 전체 영역 추적(마우스에 가장 가까운 격자점으로 스냅)
+function drawGridHits(){
+  // 항상 보이는 격자점들
+  for(let c=0;c<=COLS;c++){
+    for(let r=0;r<=ROWS;r++){
+      const dot=document.createElementNS(NS,'circle');
+      dot.setAttribute('cx',gx(c));dot.setAttribute('cy',gy(r));dot.setAttribute('r',2.2);
+      dot.setAttribute('class','griddot');
+      svg.appendChild(dot);
+    }
+  }
+  // 마우스 추적용 투명 사각형 (도형 영역 전체)
+  // 연장선 긋기 모드에서는 깔지 않음 → 변을 클릭해 연장할 수 있도록
+  if(!extendArmed){
+    const rect=document.createElementNS(NS,'rect');
+    rect.setAttribute('x',0);rect.setAttribute('y',0);
+    rect.setAttribute('width',W);rect.setAttribute('height',H);
+    rect.setAttribute('fill','transparent');
+    rect.style.cursor='crosshair';
+    rect.addEventListener('mousemove',onTrackMove);
+    rect.addEventListener('mouseleave',()=>{ removeSnapHint(); });
+    rect.addEventListener('click',onTrackClick);
+    svg.appendChild(rect);
+  }
+  // 스냅 미리보기 요소 (맨 위)
+  snapHint=document.createElementNS(NS,'g');
+  snapHint.setAttribute('class','snaphint-group');
+  svg.appendChild(snapHint);
+}
+
+let snapHint=null;
+let snapCR=null;   // 현재 스냅된 {c,r}
+
+function svgPoint(evt){
+  const pt=svg.createSVGPoint();
+  pt.x=evt.clientX; pt.y=evt.clientY;
+  const m=svg.getScreenCTM().inverse();
+  return pt.matrixTransform(m);
+}
+function nearestGrid(x,y){
+  let c=Math.round((x-OX)/STEP), r=Math.round((y-OY)/STEP);
+  c=Math.max(0,Math.min(COLS,c)); r=Math.max(0,Math.min(ROWS,r));
+  return {c,r};
+}
+function onTrackMove(evt){
+  if(answered) { removeSnapHint(); return; }
+  const p=svgPoint(evt);
+  const g=nearestGrid(p.x,p.y);
+  snapCR=g;
+  drawSnapHint(g);
+}
+function removeSnapHint(){ if(snapHint) snapHint.innerHTML=''; snapCR=null; }
+function drawSnapHint(g){
+  if(!snapHint) return;
+  snapHint.innerHTML='';
+  const ring=document.createElementNS(NS,'circle');
+  ring.setAttribute('cx',gx(g.c));ring.setAttribute('cy',gy(g.r));ring.setAttribute('r',8);
+  ring.setAttribute('class','snaphint');
+  const core=document.createElementNS(NS,'circle');
+  core.setAttribute('cx',gx(g.c));core.setAttribute('cy',gy(g.r));core.setAttribute('r',3);
+  core.setAttribute('class','snaphint-dot');
+  snapHint.appendChild(ring);
+  snapHint.appendChild(core);
+}
+function onTrackClick(evt){
+  if(answered) return;
+  const p=svgPoint(evt);
+  const g=nearestGrid(p.x,p.y);
+  onGridClick(g.c,g.r);
+}
+
+// 학생이 찍은 점들과 두 점을 이은 선
+function drawPickedHeight(){
+  if(pickedPts.length===2){
+    const A=pickedPts[0], B=pickedPts[1];
+    const ln=document.createElementNS(NS,'line');
+    ln.setAttribute('x1',gx(A.c));ln.setAttribute('y1',gy(A.r));
+    ln.setAttribute('x2',gx(B.c));ln.setAttribute('y2',gy(B.r));
+    ln.setAttribute('class','userheight'+(answered && !lastWasCorrect?' wrong':''));
+    svg.appendChild(ln);
+  }
+  pickedPts.forEach(p=>{
+    const t=document.createElementNS(NS,'circle');
+    t.setAttribute('cx',gx(p.c));t.setAttribute('cy',gy(p.r));t.setAttribute('r',5);
+    let cls='picktick';
+    if(answered) cls+= lastWasCorrect?' correct':' wrong';
+    t.setAttribute('class',cls);
+    svg.appendChild(t);
+  });
+}
+
+function drawGrid(){
+  for(let c=0;c<=COLS;c++){
+    const ln=document.createElementNS(NS,'line');
+    ln.setAttribute('x1',gx(c));ln.setAttribute('y1',gy(0));
+    ln.setAttribute('x2',gx(c));ln.setAttribute('y2',gy(ROWS));
+    ln.setAttribute('stroke','var(--grid)');ln.setAttribute('stroke-width','1');
+    svg.appendChild(ln);
+  }
+  for(let r=0;r<=ROWS;r++){
+    const ln=document.createElementNS(NS,'line');
+    ln.setAttribute('x1',gx(0));ln.setAttribute('y1',gy(r));
+    ln.setAttribute('x2',gx(COLS));ln.setAttribute('y2',gy(r));
+    ln.setAttribute('stroke','var(--grid)');ln.setAttribute('stroke-width','1');
+    svg.appendChild(ln);
+  }
+}
+
+function drawExtension(A,B){
+  // 선분 AB를 양쪽으로 길게 연장
+  const dx=B.x-A.x, dy=B.y-A.y;
+  const L=Math.hypot(dx,dy); const ux=dx/L, uy=dy/L;
+  const ext=200;
+  const a={x:A.x-ux*ext, y:A.y-uy*ext};
+  const b={x:B.x+ux*ext, y:B.y+uy*ext};
+  const ln=document.createElementNS(NS,'line');
+  ln.setAttribute('x1',a.x);ln.setAttribute('y1',a.y);
+  ln.setAttribute('x2',b.x);ln.setAttribute('y2',b.y);
+  ln.setAttribute('class','ext');
+  svg.appendChild(ln);
+}
+
+function drawBaseTarget(s, base){
+  const A=P(s,base[0]), B=P(s,base[1]);
+  const ln=document.createElementNS(NS,'line');
+  ln.setAttribute('x1',A.x);ln.setAttribute('y1',A.y);
+  ln.setAttribute('x2',B.x);ln.setAttribute('y2',B.y);
+  ln.setAttribute('class','edge base-target');
+  ln.style.pointerEvents='none';
+  svg.appendChild(ln);
+  // 밑변 라벨
+  const mx=(A.x+B.x)/2, my=(A.y+B.y)/2;
+  const t=document.createElementNS(NS,'text');
+  t.setAttribute('x',mx);t.setAttribute('y',my-8);
+  t.setAttribute('class','label');t.setAttribute('text-anchor','middle');
+  t.setAttribute('fill','var(--base)');
+  t.textContent='밑변';
+  svg.appendChild(t);
+}
+
+function drawHeight(s, t, withLabel){
+  let A=P(s,t.apex), B=P(s,t.base[0]), C=P(s,t.base[1]);
+
+  // 평행사변형: 높이가 변(다리)과 겹치지 않도록, 윗변 위의 안쪽 점에서 내려 도형 내부를 지나게
+  if(s.type==='평행사변형' && t.opp){
+    // 윗변 = opp의 두 끝(O1,O2). 그 위에서 밑변에 수직인 발이 밑변 내부(0<u<1)에 오는 점을 찾음
+    const O1=P(s,t.opp[0]), O2=P(s,t.opp[1]);
+    const inner = innerTopPoint(O1,O2,B,C);
+    if(inner){ A=inner; }
+  }
+
+  const F=footOfPerp(A,B,C);
+  const outside = (F.t<-1e-9 || F.t>1+1e-9);
+
+  // 높이선(실선)
+  const ln=document.createElementNS(NS,'line');
+  ln.setAttribute('x1',A.x);ln.setAttribute('y1',A.y);
+  ln.setAttribute('x2',F.x);ln.setAttribute('y2',F.y);
+  ln.setAttribute('class','heightline');
+  svg.appendChild(ln);
+
+  // 발이 밑변 밖이면 밑변에서 발까지 점선 보조선
+  if(outside){
+    const near = (F.t<0)? B : C;
+    const dl=document.createElementNS(NS,'line');
+    dl.setAttribute('x1',near.x);dl.setAttribute('y1',near.y);
+    dl.setAttribute('x2',F.x);dl.setAttribute('y2',F.y);
+    dl.setAttribute('class','heightline dash');
+    svg.appendChild(dl);
+  }
+
+  // 높이의 양 끝점(꼭짓점 A, 수선의 발 F)을 곡선 아치 점선으로 연결
+  drawHeightArch(A,F,B,C);
+
+  if(withLabel){
+    const mx=(A.x+F.x)/2, my=(A.y+F.y)/2;
+    const tx=document.createElementNS(NS,'text');
+    tx.setAttribute('x',mx+8);tx.setAttribute('y',my);
+    tx.setAttribute('class','label');tx.setAttribute('fill','var(--height)');
+    tx.textContent='높이';
+    svg.appendChild(tx);
+  }
+}
+
+// 윗변(O1-O2) 위에서, 밑변(B-C)에 수직으로 내린 발이 밑변 내부에 오는 점을 반환
+function innerTopPoint(O1,O2,B,C){
+  let best=null, bestScore=1e9;
+  for(let r=0.02; r<=0.98; r+=0.02){
+    const Px=O1.x+(O2.x-O1.x)*r, Py=O1.y+(O2.y-O1.y)*r;
+    const f=footOfPerp({x:Px,y:Py},B,C);
+    if(f.t>=0.12 && f.t<=0.88){
+      const score=Math.abs(f.t-0.5);
+      if(score<bestScore){ bestScore=score; best={x:Px,y:Py}; }
+    }
+  }
+  return best;
+}
+
+// 높이선의 양 끝점(A=꼭짓점, F=수선의 발)을 옆으로 부푼 곡선 아치 점선으로 연결
+function drawHeightArch(A,F,B,C){
+  // 밑변 방향 단위벡터(아치를 한쪽으로 부풀리는 기준)
+  const bx=C.x-B.x, by=C.y-B.y; const bl=Math.hypot(bx,by)||1;
+  const ubx=bx/bl, uby=by/bl;
+  // 아치의 볼록 방향: 도형 중심 반대쪽(바깥)으로 부풀림
+  const mid={x:(A.x+F.x)/2, y:(A.y+F.y)/2};
+  const cen=shapeCentroid(cur);
+  // 밑변 방향으로 살짝 띄우되, 도형 중심에서 멀어지는 쪽 선택
+  const test={x:mid.x+ubx*10, y:mid.y+uby*10};
+  const away = (Math.hypot(test.x-cen.x,test.y-cen.y) >= Math.hypot(mid.x-cen.x,mid.y-cen.y)) ? 1 : -1;
+  const bulge=14;
+  const ctrl={x:mid.x+ubx*bulge*away, y:mid.y+uby*bulge*away};
+  const path=document.createElementNS(NS,'path');
+  path.setAttribute('d',`M ${A.x} ${A.y} Q ${ctrl.x} ${ctrl.y} ${F.x} ${F.y}`);
+  path.setAttribute('class','heightarch');
+  svg.appendChild(path);
+}
+function shapeCentroid(s){
+  let x=0,y=0; s.pts.forEach(p=>{x+=gx(p[0]);y+=gy(p[1]);});
+  return {x:x/s.pts.length, y:y/s.pts.length};
+}
+
+function drawEdge(s,i,j){
+  const A=P(s,i),B=P(s,j);
+  const ln=document.createElementNS(NS,'line');
+  ln.setAttribute('x1',A.x);ln.setAttribute('y1',A.y);
+  ln.setAttribute('x2',B.x);ln.setAttribute('y2',B.y);
+  ln.setAttribute('class','edge');
+  ln.dataset.i=i; ln.dataset.j=j;
+  ln.addEventListener('mouseenter',()=>{ if(!answered) ln.classList.add('hover'); });
+  ln.addEventListener('mouseleave',()=> ln.classList.remove('hover'));
+  ln.addEventListener('click',()=> onEdgeClick(i,j,ln));
+  svg.appendChild(ln);
+}
+
+function drawVertex(s,i){
+  const A=P(s,i);
+  const c=document.createElementNS(NS,'circle');
+  c.setAttribute('cx',A.x);c.setAttribute('cy',A.y);c.setAttribute('r',5.5);
+  c.setAttribute('class','vertex');
+  c.dataset.i=i;
+  c.style.pointerEvents='none';   // 격자점 레이어가 클릭을 담당
+  svg.appendChild(c);
+}
+
+/* ---------- 클릭 처리 ---------- */
+function onEdgeClick(i,j,el){
+  // 연장선 모드: 변을 연장
+  if(extendArmed){
+    const k=edgeKey(i,j);
+    if(extendedEdges.has(k)) extendedEdges.delete(k); else extendedEdges.add(k);
+    render();
+    return;
+  }
+  if(answered) return;
+
+  if(mode==='base'){
+    const k=edgeKey(i,j);
+    const s=cur;
+    const target=edgeKey(task.base[0],task.base[1]);     // 그려진 높이의 밑변
+    const isPara = !!task.opp;   // 마주 보는 평행변이 있으면 두 변 모두 선택
+    const oppKey = isPara ? edgeKey(task.opp[0],task.opp[1]) : null;
+
+    // 정답이 될 수 있는 변인지
+    const isAnswerEdge = (k===target) || (isPara && k===oppKey);
+
+    if(!isAnswerEdge){
+      // 오답: 시도 1회 차감 처리, 정답 변 강조
+      tries++; lastWasCorrect=false; answered=true;
+      el.classList.add('wrong');
+      highlightCorrectEdge(target);
+      if(isPara) highlightCorrectEdge(oppKey);
+      setFeedback(isPara
+        ? '아쉽습니다. 높이와 직각으로 만나는, 평행한 두 변이 밑변입니다.'
+        : '아쉽습니다. 높이와 직각으로 만나는 변이 밑변입니다.','bad');
+      updateScores();
+      autoAdvance();
+      return;
+    }
+
+    // 정답이 될 수 있는 변을 클릭함
+    el.classList.add('picked');
+    pickedBases.add(k);
+
+    if(isPara){
+      // 두 변을 다 골라야 완성
+      if(pickedBases.has(target) && pickedBases.has(oppKey)){
+        tries++; correct++; lastWasCorrect=true; answered=true;
+        highlightCorrectEdge(target); highlightCorrectEdge(oppKey);
+        setFeedback('정답입니다! 평행한 두 변이 모두 밑변입니다.','good');
+        updateScores();
+        autoAdvance();
+      }else{
+        setFeedback('좋아요. 평행한 나머지 한 변도 선택하세요.','');
+      }
+    }else{
+      tries++; correct++; lastWasCorrect=true; answered=true;
+      el.classList.add('correct');
+      setFeedback('정답입니다! 이 변이 그 높이의 밑변입니다.','good');
+      updateScores();
+      autoAdvance();
+    }
+  }
+}
+
+function onGridClick(c,r){
+  if(extendArmed) return;
+  if(answered || mode!=='height') return;
+  // 같은 점 다시 누르면 취소
+  const existing = pickedPts.findIndex(p=>p.c===c && p.r===r);
+  if(existing>=0){ pickedPts.splice(existing,1); render(); return; }
+  if(pickedPts.length>=2) pickedPts=[];   // 이미 둘이면 새로 시작
+  pickedPts.push({c,r});
+  render();
+  if(pickedPts.length===2) judgeHeight();
+}
+
+// 두 격자점이 올바른 높이인지 판정
+// 정답 조건: 두 점을 이은 선분이 밑변에 수직이고,
+//   한 끝점은 밑변(또는 연장선) 직선 위, 다른 끝점은 꼭짓점을 지나며 밑변에 평행한 직선 위.
+//   → 높이를 옆으로 평행이동한 선분도 정답(길이는 자동으로 높이와 같아짐).
+function judgeHeight(){
+  tries++;
+  const s=cur;
+  const B=P(s,task.base[0]), C=P(s,task.base[1]);   // 밑변 양 끝
+  const apex=P(s,task.apex);                          // 높이 꼭짓점
+  const foot=footOfPerp(apex,B,C);                    // 정답 수선의 발(안내용)
+
+  const p0={x:gx(pickedPts[0].c),y:gy(pickedPts[0].r)};
+  const p1={x:gx(pickedPts[1].c),y:gy(pickedPts[1].r)};
+
+  // 1) 선분이 밑변에 수직인가
+  const perpOK = isPerpToBase(p0,p1,B,C);
+  // 2) 한 끝은 밑변 직선 위, 다른 끝은 꼭짓점을 지나는 평행선 위 (순서 무관)
+  const onBase0 = pointOnLine(p0,B,C);
+  const onBase1 = pointOnLine(p1,B,C);
+  const onApex0 = pointOnParallelThroughApex(p0,B,C,apex);
+  const onApex1 = pointOnParallelThroughApex(p1,B,C,apex);
+  const endsOK = (onBase0 && onApex1) || (onBase1 && onApex0);
+
+  if(perpOK && endsOK){
+    correct++; lastWasCorrect=true; answered=true;
+    render();
+    setFeedback('정답입니다! 밑변과 꼭짓점 사이를 수직으로 이은 높이입니다.','good');
+  }else{
+    lastWasCorrect=false; answered=true;
+    render();
+    drawHeight(s, task, true);   // 정답 높이 안내
+    markFoot(foot);
+    if(!perpOK){
+      setFeedback('아쉽습니다. 두 점을 이은 선이 밑변과 직각(수직)이 되어야 합니다.','bad');
+    }else{
+      setFeedback('아쉽습니다. 한 끝은 밑변(연장선) 위, 다른 끝은 꼭짓점을 지나는 높이만큼 떨어진 위치여야 합니다.','bad');
+    }
+  }
+  updateScores();
+  autoAdvance();
+}
+
+function near(a,b){ return Math.abs(a.x-b.x)<0.5 && Math.abs(a.y-b.y)<0.5; }
+
+// 점 Q가 직선 BC(무한 직선) 위에 있는가(연장선 포함)
+function pointOnLine(Q,B,C){
+  const bx=C.x-B.x, by=C.y-B.y;
+  const bl=Math.hypot(bx,by);
+  if(bl<1) return false;
+  const cross=Math.abs((Q.x-B.x)*by-(Q.y-B.y)*bx)/bl;
+  return cross<1;
+}
+
+// 점 Q가 '꼭짓점 apex를 지나며 밑변 BC에 평행한 직선' 위에 있는가
+function pointOnParallelThroughApex(Q,B,C,apex){
+  // apex를 지나고 BC와 같은 방향인 직선. 점-직선 거리로 판정.
+  return pointOnLine(Q, apex, {x:apex.x+(C.x-B.x), y:apex.y+(C.y-B.y)});
+}
+
+function isPerpToBase(p0,p1,B,C){
+  const vx=p1.x-p0.x, vy=p1.y-p0.y;
+  const bx=C.x-B.x, by=C.y-B.y;
+  const vl=Math.hypot(vx,vy), bl=Math.hypot(bx,by);
+  if(vl<1||bl<1) return false;
+  const dot=(vx*bx+vy*by)/(vl*bl);
+  return Math.abs(dot)<0.02;   // 거의 0이면 수직
+}
+
+function markFoot(foot){
+  const t=document.createElementNS(NS,'circle');
+  t.setAttribute('cx',foot.x);t.setAttribute('cy',foot.y);t.setAttribute('r',4);
+  t.setAttribute('fill','var(--good)');t.setAttribute('stroke','#fff');t.setAttribute('stroke-width','1.5');
+  svg.appendChild(t);
+}
+
+function highlightCorrectEdge(target){
+  const edges=svg.querySelectorAll('.edge');
+  edges.forEach(e=>{
+    const k=edgeKey(+e.dataset.i,+e.dataset.j);
+    if(k===target) e.classList.add('correct');
+  });
+}
+
+function autoAdvance(){
+  // 정답·오답 후 1.4초 뒤 다음 도형 (무작위 모드일 때만 자동)
+  if(source==='random'){
+    setTimeout(()=>{ if(answered) nextShape(); }, 1500);
+  }
+}
+
+/* ---------- 초기화 ---------- */
+buildPickButtons();
+nextShape();
+updateScores();
+</script>
+</body>
+</html>
